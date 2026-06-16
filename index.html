@@ -115,7 +115,7 @@
 
     <div class="main-container">
         <div id="logged-out-view">
-            <div class="auth-message">Доступно только<br>для зарегистрированных</div>
+            <div class="auth-message">Доступно только<br>для зарегистрированныхы</div>
             <button class="sign-in-btn" id="custom-sign-in-btn">Войти</button>
         </div>
 
@@ -128,18 +128,20 @@
     <script 
         crossorigin="anonymous" 
         data-clerk-publishable-key="pk_test_c291bmQtc3RhcmxpbmctNDYuY2xlcmsuYWNjb3VudHMuZGV2JA" 
-        src="https://charming-phoenix-77.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" 
+        src="https://sound-starling-46.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" 
         type="text/javascript">
     </script>
 
     <script>
-        // === НАСТРОЙКА ДЛЯ GITHUB PAGES ===
-        // Замени эту ссылку на реальный URL твоего репозитория на GitHub Pages!
-        // Обязательно оставь слэш / на конце.
         const MY_SITE = "https://skibii323-web.github.io/ssss211/";
 
         window.addEventListener('load', async function() {
             const clerk = window.Clerk;
+            if (!clerk) {
+                console.error("Clerk не загрузился. Проверь блокировщики скриптов.");
+                return;
+            }
+
             await clerk.load();
 
             const authContainer = document.getElementById('auth-container');
@@ -155,10 +157,12 @@
                 if (clerk.user) {
                     authContainer.innerHTML = '';
                     
-                    // Передаем после какого URL перенаправлять при выходе из аккаунта
                     clerk.mountUserButton(authContainer, {
                         afterSignOutUrl: MY_SITE
                     });
+                    
+                    loggedOutView.style.style.display = 'none'; // Избегаем конфликтов стилей
+                    loggedOutView.style.setProperties ? loggedOutView.style.setProperty('display', 'none', 'important') : loggedOutView.style.display = 'none';
                     
                     loggedOutView.style.display = 'none';
                     loggedInView.style.display = 'block';
@@ -168,6 +172,7 @@
                     authContainer.innerHTML = '';
                     loggedOutView.style.display = 'block';
                     loggedInView.style.display = 'none';
+                    clearInterval(timerInterval);
                 }
             }
 
@@ -208,7 +213,7 @@
                 vipBtn.disabled = true;
                 vipBtn.textContent = '...';
                 
-                const endTime = Date.now() + 60000; // 1 минута
+                const endTime = Date.now() + 60000;
                 
                 try {
                     await clerk.user.update({
@@ -225,13 +230,18 @@
             });
 
             signInBtn.addEventListener('click', () => {
-                // Передаем настройки редиректа, чтобы после логина Clerk возвращал именно на MY_SITE
+                // Добавлены все возможные параметры перенаправлений для разных версий SDK
                 clerk.openSignIn({
+                    redirectUrl: MY_SITE,
                     afterSignInUrl: MY_SITE,
                     afterSignUpUrl: MY_SITE,
-                    redirectUrl: MY_SITE
+                    signInForceRedirectUrl: MY_SITE,
+                    signUpForceRedirectUrl: MY_SITE
                 });
             });
+
+            // Вызываем проверку СРАЗУ, чтобы не ждать срабатывания листнера при первой загрузке
+            updateUI();
 
             clerk.addListener(() => {
                 updateUI();
