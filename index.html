@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VIP Таймер</title>
     <style>
-        /* Базовые стили для центрирования и красивого вида */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
@@ -59,10 +58,6 @@
             padding: 10px 20px;
         }
 
-        #sign-in-btn:hover {
-            box-shadow: 0 6px 20px rgba(9, 132, 227, 0.6);
-        }
-
         #timer-display {
             font-size: 48px;
             font-weight: bold;
@@ -71,18 +66,9 @@
             margin-top: 20px;
         }
 
-        .hidden {
-            display: none !important;
-        }
-
-        #main-container {
-            text-align: center;
-        }
-
-        h1 {
-            margin-bottom: 30px;
-            font-weight: 300;
-        }
+        .hidden { display: none !important; }
+        #main-container { text-align: center; }
+        h1 { margin-bottom: 30px; font-weight: 300; }
     </style>
 </head>
 <body>
@@ -101,31 +87,33 @@
         </div>
     </div>
 
-    <script>
-        // Твои настройки
-        const CLERK_PUBLISHABLE_KEY = 'pk_test_c291bmQtc3RhcmxpbmctNDYuY2xlcmsuYWNjb3VudHMuZGV2JA';
-        const MY_SITE = 'https://skibii323-web.github.io/ssss211/';
-        const TIMER_DURATION_MS = 60 * 1000; // 1 минута в миллисекундах
+    <script 
+        async 
+        crossorigin="anonymous" 
+        data-clerk-publishable-key="pk_test_c291bmQtc3RhcmxpbmctNDYuY2xlcmsuYWNjb3VudHMuZGV2JA" 
+        src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js">
+    </script>
 
-        // Подключаем Clerk SDK
-        const script = document.createElement('script');
-        script.setAttribute('data-clerk-publishable-key', CLERK_PUBLISHABLE_KEY);
-        script.async = true;
-        script.src = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
-        script.crossOrigin = 'anonymous';
-        
-        script.addEventListener('load', async () => {
+    <script>
+        const MY_SITE = 'https://skibii323-web.github.io/ssss211/';
+        const TIMER_DURATION_MS = 60 * 1000; 
+
+        // Ждем полной загрузки страницы и скрипта Clerk
+        window.addEventListener('load', async () => {
+            if (!window.Clerk) {
+                document.getElementById('welcome-text').innerText = 'Ошибка: Clerk не загрузился. Проверьте интернет.';
+                return;
+            }
+
             try {
                 await window.Clerk.load();
                 initializeApp();
             } catch (err) {
-                console.error('Ошибка загрузки Clerk:', err);
-                document.getElementById('welcome-text').innerText = 'Ошибка загрузки системы авторизации.';
+                console.error('Ошибка запуска Clerk:', err);
+                document.getElementById('welcome-text').innerText = 'Ошибка системы авторизации.';
             }
         });
-        document.body.appendChild(script);
 
-        // Основная логика приложения
         function initializeApp() {
             const clerk = window.Clerk;
             const signInBtn = document.getElementById('sign-in-btn');
@@ -139,12 +127,11 @@
 
             if (clerk.user) {
                 // Пользователь АВТОРИЗОВАН
-                clerk.mountUserButton(userButtonDiv); // Показываем иконку профиля
+                clerk.mountUserButton(userButtonDiv); 
                 signInBtn.classList.add('hidden');
                 welcomeText.innerText = `Добро пожаловать, ${clerk.user.firstName || 'Пользователь'}!`;
                 vipSection.classList.remove('hidden');
 
-                // Проверяем состояние таймера при загрузке
                 checkTimerState();
             } else {
                 // Пользователь НЕ АВТОРИЗОВАН
@@ -160,58 +147,51 @@
                 };
             }
 
-            // Функция проверки времени (для синхронизации между устройствами)
             function checkTimerState() {
-                // Достаем время клика из профиля пользователя в Clerk
-                const clickTime = clerk.user.unsafeMetadata.vipClickTime;
+                // Защита от пустой меты
+                const meta = clerk.user.unsafeMetadata || {};
+                const clickTime = meta.vipClickTime;
                 
                 if (clickTime) {
                     const elapsedTime = Date.now() - clickTime;
                     const remainingTime = TIMER_DURATION_MS - elapsedTime;
                     
                     if (remainingTime > 0) {
-                        // Таймер еще идет
                         startTimerUI(remainingTime);
                     } else {
-                        // Время вышло, показываем кнопку
                         showVipButton();
                     }
                 } else {
-                    // Никогда не нажимал, показываем кнопку
                     showVipButton();
                 }
             }
 
-            // Функция отображения кнопки VIP
             function showVipButton() {
                 vipBtn.classList.remove('hidden');
                 timerDisplay.classList.add('hidden');
                 
                 vipBtn.onclick = async () => {
-                    vipBtn.disabled = true; // Защита от двойного клика
+                    vipBtn.disabled = true; 
                     try {
-                        // Сохраняем время нажатия прямо в аккаунт Clerk
                         await clerk.user.update({
                             unsafeMetadata: { vipClickTime: Date.now() }
                         });
                         startTimerUI(TIMER_DURATION_MS);
                     } catch (error) {
                         console.error('Ошибка сохранения данных в Clerk:', error);
-                        alert('Не удалось запустить таймер, попробуйте еще раз.');
+                        alert('Ошибка. Попробуйте еще раз.');
                     } finally {
                         vipBtn.disabled = false;
                     }
                 };
             }
 
-            // Функция запуска визуального таймера
             function startTimerUI(durationMs) {
                 vipBtn.classList.add('hidden');
                 timerDisplay.classList.remove('hidden');
                 
                 const endTime = Date.now() + durationMs;
 
-                // Обновляем сразу и запускаем интервал
                 updateClock();
                 timerInterval = setInterval(updateClock, 1000);
 
