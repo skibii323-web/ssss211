@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP Timer App</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #0b0914;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Контейнер авторизации в правом верхнем углу */
+        #auth-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        /* Главный экран по центру */
+        .main-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(20px);
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .auth-message {
+            font-size: 18px;
+            color: #8a8a9e;
+            margin-bottom: 20px;
+        }
+
+        /* Кнопка входа */
+        .sign-in-btn {
+            background: #ffffff;
+            color: #0b0914;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .sign-in-btn:active {
+            transform: scale(0.95);
+            background: #e0e0e0;
+        }
+
+        /* VIP кнопка */
+        .vip-btn {
+            background: linear-gradient(135deg, #ffaa00, #ff5500);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 85, 0, 0.4);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .vip-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(255, 85, 0, 0.6);
+        }
+
+        .vip-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 4px 10px rgba(255, 85, 0, 0.4);
+        }
+
+        .vip-btn:disabled {
+            background: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Таймер */
+        .timer-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffaa00;
+            text-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="auth-container"></div>
+
+    <div class="main-container">
+        <div id="logged-out-view">
+            <div class="auth-message">Доступно только<br>для зарегистрированных</div>
+            <button class="sign-in-btn" id="custom-sign-in-btn">Войти</button>
+        </div>
+
+        <div id="logged-in-view" style="display: none;">
+            <button id="vip-btn" class="vip-btn">VIP</button>
+            <div id="timer-display" class="timer-display" style="display: none;">01:00</div>
+        </div>
+    </div>
+
+    <script 
+        crossorigin="anonymous" 
+        data-clerk-publishable-key="pk_test_c291bmQtc3RhcmxpbmctNDYuY2xlcmsuYWNjb3VudHMuZGV2JA" 
+        src="https://charming-phoenix-77.clerk.accounts.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js" 
+        type="text/javascript">
+    </script>
+
+    <script>
+        // === НАСТРОЙКА ДЛЯ GITHUB PAGES ===
+        // Замени эту ссылку на реальный URL твоего репозитория на GitHub Pages!
+        // Обязательно оставь слэш / на конце.
+        const MY_SITE = "https://skibii323-web.github.io/ssss211/";
+
+        window.addEventListener('load', async function() {
+            const clerk = window.Clerk;
+            await clerk.load();
+
+            const authContainer = document.getElementById('auth-container');
+            const loggedOutView = document.getElementById('logged-out-view');
+            const loggedInView = document.getElementById('logged-in-view');
+            const signInBtn = document.getElementById('custom-sign-in-btn');
+            
+            const vipBtn = document.getElementById('vip-btn');
+            const timerDisplay = document.getElementById('timer-display');
+            let timerInterval;
+
+            function updateUI() {
+                if (clerk.user) {
+                    authContainer.innerHTML = '';
+                    
+                    // Передаем после какого URL перенаправлять при выходе из аккаунта
+                    clerk.mountUserButton(authContainer, {
+                        afterSignOutUrl: MY_SITE
+                    });
+                    
+                    loggedOutView.style.display = 'none';
+                    loggedInView.style.display = 'block';
+                    
+                    checkTimer();
+                } else {
+                    authContainer.innerHTML = '';
+                    loggedOutView.style.display = 'block';
+                    loggedInView.style.display = 'none';
+                }
+            }
+
+            function checkTimer() {
+                const now = Date.now();
+                const timerEnd = clerk.user.unsafeMetadata.vipTimerEnd || 0;
+
+                if (timerEnd > now) {
+                    startCountdown(timerEnd);
+                } else {
+                    vipBtn.style.display = 'inline-block';
+                    timerDisplay.style.display = 'none';
+                }
+            }
+
+            function startCountdown(endTime) {
+                vipBtn.style.display = 'none';
+                timerDisplay.style.display = 'block';
+                
+                clearInterval(timerInterval);
+                
+                timerInterval = setInterval(() => {
+                    const now = Date.now();
+                    const diff = endTime - now;
+
+                    if (diff <= 0) {
+                        clearInterval(timerInterval);
+                        vipBtn.style.display = 'inline-block';
+                        timerDisplay.style.display = 'none';
+                    } else {
+                        const seconds = Math.ceil(diff / 1000);
+                        timerDisplay.textContent = `00:${seconds < 10 ? '0' + seconds : seconds}`;
+                    }
+                }, 1000);
+            }
+
+            vipBtn.addEventListener('click', async () => {
+                vipBtn.disabled = true;
+                vipBtn.textContent = '...';
+                
+                const endTime = Date.now() + 60000; // 1 минута
+                
+                try {
+                    await clerk.user.update({
+                        unsafeMetadata: { vipTimerEnd: endTime }
+                    });
+                    startCountdown(endTime);
+                } catch (error) {
+                    console.error("Ошибка сохранения таймера:", error);
+                    alert("Ошибка синхронизации, попробуйте еще раз.");
+                } finally {
+                    vipBtn.disabled = false;
+                    vipBtn.textContent = 'VIP';
+                }
+            });
+
+            signInBtn.addEventListener('click', () => {
+                // Передаем настройки редиректа, чтобы после логина Clerk возвращал именно на MY_SITE
+                clerk.openSignIn({
+                    afterSignInUrl: MY_SITE,
+                    afterSignUpUrl: MY_SITE,
+                    redirectUrl: MY_SITE
+                });
+            });
+
+            clerk.addListener(() => {
+                updateUI();
+            });
+        });
+    </script>
+</body>
+</html>
